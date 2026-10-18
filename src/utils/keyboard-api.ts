@@ -11,6 +11,17 @@ import {
   logKeyboardAPIError,
 } from 'src/store/errorsSlice';
 import {KeyboardValue} from './keyboard-values';
+import {
+  decodeName,
+  encodeName,
+  VIA_EXTRA_CMD,
+  VIA_EXTRA_VERSION,
+  ViaExtraCaps,
+  ViaExtraError,
+  ViaExtraOp,
+  ViaExtraStatus,
+  parseCaps,
+} from './via-extra';
 export {KeyboardValue} from './keyboard-values';
 
 // VIA Command IDs
@@ -548,6 +559,83 @@ export class KeyboardAPI {
 
   async resetEEPROM() {
     await this.hidCommand(APICommand.EEPROM_RESET);
+  }
+
+  // via_extra keyboard extension, see D:\Claude_Softwareuildbox-protocol\PROTOCOL.md
+  // Returns the data bytes that follow the status byte of the reply.
+  private async viaExtraCommand(
+    op: number,
+    args: number[] = [],
+    reportErrors = true,
+  ): Promise<number[]> {
+    const buffer = await this.hidCommand(
+      VIA_EXTRA_CMD,
+      [VIA_EXTRA_VERSION, op, ...args],
+      `via_extra 0x${op.toString(16)}`,
+      reportErrors,
+    );
+    const status = buffer[3 + args.length];
+    if (status !== ViaExtraStatus.OK) {
+      throw new ViaExtraError(op, status);
+    }
+    return buffer.slice(4 + args.length);
+  }
+
+  // Resolves to null if the keyboard does not support via_extra (stock firmware
+  // answers with 0xFF, which makes the reply check fail). Nothing is logged.
+  async getViaExtraCaps(): Promise<ViaExtraCaps | null> {
+    try {
+      return parseCaps(await this.viaExtraCommand(ViaExtraOp.GET_CAPS, [], false));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async getLayerName(layer: number): Promise<string> {
+    return decodeName(await this.viaExtraCommand(ViaExtraOp.GET_LAYER_NAME, [layer]));
+  }
+
+  // An empty name clears the custom name and restores the built-in one.
+  async setLayerName(layer: number, name: string) {
+    await this.viaExtraCommand(ViaExtraOp.SET_LAYER_NAME, [
+      layer,
+      name.length,
+      ...encodeName(name),
+    ]);
+  }
+
+  async getLayerIcon(layer: number): Promise<number> {
+    const [icon] = await this.viaExtraCommand(ViaExtraOp.GET_LAYER_ICON, [layer]);
+    return icon;
+  }
+
+  // icon 0 restores the layer's default icon
+  async setLayerIcon(layer: number, icon: number) {
+    await this.viaExtraCommand(ViaExtraOp.SET_LAYER_ICON, [layer, icon]);
+  }
+
+  async saveViaExtra() {
+    await this.viaExtraCommand(ViaExtraOp.SAVE);
+  }
+
+  async getViaExtraSetting(id: number): Promise<number> {
+    const [hi, lo] = await this.viaExtraCommand(ViaExtraOp.GET_SETTING, [id]);
+    return (hi << 8) | lo;
+  }
+
+  async setViaExtraSetting(id: number, value: number) {
+    await this.viaExtraCommand(ViaExtraOp.SET_SETTING, [
+      id,
+      (value >> 8) & 0xff,
+      value & 0xff,
+    ]);
+  }
+
+  async getViaExtraState(): Promise<{activeLayer: number; layerMask: number}> {
+    const [activeLayer, m0, m1, m2, m3] = await this.viaExtraCommand(
+      ViaExtraOp.GET_STATE,
+    );
+    return {activeLayer, layerMask: (m0 | (m1 << 8) | (m2 << 16) | (m3 << 24)) >>> 0};
   }
 
   async jumpToBootloader() {

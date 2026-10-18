@@ -20,6 +20,7 @@ import * as Macros from './configure-panes/macros';
 import * as SaveLoad from './configure-panes/save-load';
 import * as Layouts from './configure-panes/layouts';
 import * as Layers from './configure-panes/layers';
+import * as Debug from './configure-panes/debug';
 import * as RotaryEncoder from './configure-panes/custom/satisfaction75';
 import {makeCustomMenus} from './configure-panes/custom/menu-generator';
 import {LayerControl} from './configure-panes/layer-control';
@@ -44,6 +45,7 @@ import {useAppDispatch} from 'src/store/hooks';
 import {MenuTooltip} from '../inputs/tooltip';
 import {getRenderMode, getSelectedTheme} from 'src/store/settingsSlice';
 import {useTranslation} from 'react-i18next';
+import {useViaExtraStatePolling} from 'src/utils/use-via-extra-state-polling';
 
 const MenuContainer = styled.div`
   padding: 15px 10px 20px 10px;
@@ -75,6 +77,7 @@ const Rows = [
   Lighting,
   SaveLoad,
   Layers,
+  Debug,
   RotaryEncoder,
   ...makeCustomMenus([]),
 ];
@@ -100,16 +103,19 @@ const getRowsForKeyboard = (): typeof Rows => {
   } else if (isVIADefinitionV2(selectedDefinition)) {
     return getRowsForKeyboardV2(selectedDefinition, showMacros, numberOfLayers);
   } else if (isVIADefinitionV3(selectedDefinition)) {
-    return [
-      ...filterInferredRows(selectedDefinition, showMacros, numberOfLayers, [
-        Keycode,
-        Layouts,
-        Macros,
-        SaveLoad,
-        Layers,
-      ]),
-      ...v3Menus,
-    ];
+    // Order: Keymap, Macros, Layouts, Lighting, Layers, Custom Features, Save + Load, Debug.
+    // Keyboard-defined menus are lighting menus (label has "light"/"rgb") or custom features.
+    const isLightingMenu = (menu: any) => /light|rgb/i.test(menu.Title);
+    return filterInferredRows(selectedDefinition, showMacros, numberOfLayers, [
+      Keycode,
+      Macros,
+      Layouts,
+      ...v3Menus.filter(isLightingMenu),
+      Layers,
+      ...v3Menus.filter((menu: any) => !isLightingMenu(menu)),
+      SaveLoad,
+      Debug,
+    ]);
   } else {
     return [];
   }
@@ -151,27 +157,27 @@ const getRowsForKeyboardV2 = (
   showMacros: boolean,
   numberOfLayers: number,
 ): typeof Rows => {
-  let rows: typeof Rows = [Keycode, Layouts, Macros, SaveLoad, Layers];
+  // Order: Keymap, Macros, Layouts, Lighting, Layers, Custom Features, Save + Load, Debug
+  let rows: typeof Rows = [Keycode, Macros, Layouts];
 
-  if (isVIADefinitionV2(selectedDefinition)) {
-    const {lighting, customFeatures} = selectedDefinition;
-    const {supportedLightingValues} = getLightingDefinition(lighting);
+  const {lighting, customFeatures} = selectedDefinition;
+  const {supportedLightingValues} = getLightingDefinition(lighting);
 
-    if (supportedLightingValues.length !== 0) {
-      rows = [...rows, Lighting];
-    }
-
-    if (customFeatures) {
-      rows = [...rows, ...getCustomPanes(customFeatures)];
-    }
+  if (supportedLightingValues.length !== 0) {
+    rows = [...rows, Lighting];
   }
 
-  return filterInferredRows(
-    selectedDefinition,
-    showMacros,
-    numberOfLayers,
-    rows,
-  );
+  rows = [...rows, Layers];
+
+  if (customFeatures) {
+    rows = [...rows, ...getCustomPanes(customFeatures)];
+  }
+
+  return filterInferredRows(selectedDefinition, showMacros, numberOfLayers, [
+    ...rows,
+    SaveLoad,
+    Debug,
+  ]);
 };
 
 const Loader: React.FC<{
@@ -253,6 +259,7 @@ export const ConfigurePane = () => {
 const ConfigureGrid = () => {
   const {t} = useTranslation();
   const dispatch = useDispatch();
+  useViaExtraStatePolling();
 
   const [selectedRow, setRow] = useState(0);
   const KeyboardRows = getRowsForKeyboard();

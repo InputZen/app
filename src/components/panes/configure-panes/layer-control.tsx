@@ -1,6 +1,7 @@
 import {useMemo} from 'react';
 import {useDispatch} from 'react-redux';
 import {useAppSelector} from 'src/store/hooks';
+import {getViaExtraActiveLayer} from 'src/store/viaExtraSlice';
 import {
   getNumberOfLayers,
   getSelectedLayerIndex,
@@ -21,7 +22,7 @@ const Label = styled.label`
   color: var(--color_label-highlighted);
   margin-right: 6px;
 `;
-const LayerButton = styled.button<{$selected?: boolean}>`
+const LayerButton = styled.button<{$selected?: boolean; $active?: boolean}>`
   outline: none;
   font-variant-numeric: tabular-nums;
   border: none;
@@ -34,6 +35,9 @@ const LayerButton = styled.button<{$selected?: boolean}>`
   cursor: pointer;
   font-size: 20px;
   font-weight: 400;
+  /* the layer the keyboard itself is on (via_extra GET_STATE) */
+  box-shadow: ${(props) =>
+    props.$active ? 'inset 0 -3px 0 var(--color_accent)' : 'none'};
   &:hover {
     border: none;
     background: ${(props) => (props.$selected ? 'auto' : 'var(--bg_menu)')};
@@ -47,6 +51,7 @@ export const LayerControl = () => {
   const dispatch = useDispatch();
   const numberOfLayers = useAppSelector(getNumberOfLayers);
   const selectedLayerIndex = useAppSelector(getSelectedLayerIndex);
+  const activeLayer = useAppSelector(getViaExtraActiveLayer);
 
   const Layers = useMemo(
     () =>
@@ -57,12 +62,13 @@ export const LayerControl = () => {
           <LayerButton
             key={layerLabel}
             $selected={layerLabel === selectedLayerIndex}
+            $active={layerLabel === activeLayer}
             onClick={() => dispatch(setLayer(layerLabel))}
           >
             {layerLabel}
           </LayerButton>
         )),
-    [numberOfLayers, selectedLayerIndex],
+    [numberOfLayers, selectedLayerIndex, activeLayer],
   );
 
   return (

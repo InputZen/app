@@ -1,2 +1,2 @@
 // Shown at the top-left of the page. Bump this on each release.
-export const APP_VERSION = 'v1.0';
+export const APP_VERSION = 'v1.2';

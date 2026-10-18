@@ -18,6 +18,7 @@ import {
 import {loadKeymapFromDevice} from './keymapSlice';
 import {updateLightingData} from './lightingSlice';
 import {loadMacros} from './macrosSlice';
+import {loadViaExtra} from './viaExtraSlice';
 import {updateV3MenuData} from './menusSlice';
 import {
   clearAllDevices,
@@ -73,6 +74,7 @@ const selectConnectedDevice =
       dispatch(selectDevice(connectedDevice));
       // John you drongo, don't trust the compiler, dispatches are totes awaitable for async thunks
       await dispatch(loadMacros(connectedDevice));
+      await dispatch(loadViaExtra(connectedDevice));
       await dispatch(loadLayoutOptions());
 
       const {protocol} = connectedDevice;
