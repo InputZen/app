@@ -11,8 +11,10 @@ import {ErrorLink, ErrorsPaneConfig} from '../panes/errors';
 import {ExternalLinks} from './external-links';
 import {useTranslation} from 'react-i18next';
 import {LanguageSelect} from './language-select';
+import {APP_VERSION} from 'src/constants/app-version';
 
 const Container = styled.div`
+  position: relative;
   width: 100vw;
   height: 25px;
   padding: 12px 0;
@@ -28,6 +30,16 @@ const showDebugPane = MODE === 'development' || DEBUG_PROD === 'true' || DEV;
 const GlobalContainer = styled(Container)`
   background: var(--bg_outside-accent);
   column-gap: 20px;
+`;
+
+const VersionLabel = styled.span`
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--color_label);
+  user-select: none;
 `;
 
 export const UnconnectedGlobalMenu = () => {
@@ -58,6 +70,7 @@ export const UnconnectedGlobalMenu = () => {
   return (
     <React.Fragment>
       <GlobalContainer>
+        <VersionLabel>{APP_VERSION}</VersionLabel>
         <ErrorLink />
         {Panes}
         <LanguageSelect />
