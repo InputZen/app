@@ -19,6 +19,7 @@ import * as Lighting from './configure-panes/lighting';
 import * as Macros from './configure-panes/macros';
 import * as SaveLoad from './configure-panes/save-load';
 import * as Layouts from './configure-panes/layouts';
+import * as Layers from './configure-panes/layers';
 import * as RotaryEncoder from './configure-panes/custom/satisfaction75';
 import {makeCustomMenus} from './configure-panes/custom/menu-generator';
 import {LayerControl} from './configure-panes/layer-control';
@@ -73,6 +74,7 @@ const Rows = [
   Layouts,
   Lighting,
   SaveLoad,
+  Layers,
   RotaryEncoder,
   ...makeCustomMenus([]),
 ];
@@ -104,6 +106,7 @@ const getRowsForKeyboard = (): typeof Rows => {
         Layouts,
         Macros,
         SaveLoad,
+        Layers,
       ]),
       ...v3Menus,
     ];
@@ -148,7 +151,7 @@ const getRowsForKeyboardV2 = (
   showMacros: boolean,
   numberOfLayers: number,
 ): typeof Rows => {
-  let rows: typeof Rows = [Keycode, Layouts, Macros, SaveLoad];
+  let rows: typeof Rows = [Keycode, Layouts, Macros, SaveLoad, Layers];
 
   if (isVIADefinitionV2(selectedDefinition)) {
     const {lighting, customFeatures} = selectedDefinition;
