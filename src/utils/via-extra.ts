@@ -15,6 +15,8 @@ export const ViaExtraOp = {
   GET_STATE: 0x41,
   GET_SETTING: 0x50,
   SET_SETTING: 0x51,
+  GET_MACRO_NAME: 0x60,
+  SET_MACRO_NAME: 0x61,
 } as const;
 
 // Device settings (PROTOCOL.md section 4a). Values are unsigned 16-bit, big-endian.
@@ -40,6 +42,7 @@ const FEATURE_NAMES = 0x01;
 const FEATURE_ICONS = 0x02;
 const FEATURE_STATE = 0x04;
 const FEATURE_SETTINGS = 0x10;
+const FEATURE_MACRO_NAMES = 0x20;
 
 // Built-in layer names of the BuildBox firmware (PROTOCOL.md, Appendix B).
 // The protocol does not say whether a name is custom, so the UI compares the
@@ -55,9 +58,13 @@ export type ViaExtraCaps = {
   hasIcons: boolean;
   hasState: boolean;
   hasSettings: boolean;
+  hasMacroNames: boolean;
   layerCount: number;
   nameLen: number;
   iconCount: number;
+  // macros that can have a name, and the longest name the keyboard accepts
+  macroCount: number;
+  macroNameLen: number;
 };
 
 export class ViaExtraError extends Error {
@@ -73,16 +80,31 @@ export class ViaExtraError extends Error {
 }
 
 export const parseCaps = (data: number[]): ViaExtraCaps => {
-  const [firmwareVersion, features, layerCount, nameLen, iconCount] = data;
+  const [
+    firmwareVersion,
+    features,
+    layerCount,
+    nameLen,
+    iconCount,
+    macroCount,
+    macroNameLen,
+  ] = data;
+  const hasMacroNames = (features & FEATURE_MACRO_NAMES) !== 0;
   return {
     firmwareVersion,
     hasNames: (features & FEATURE_NAMES) !== 0,
     hasIcons: (features & FEATURE_ICONS) !== 0,
     hasState: (features & FEATURE_STATE) !== 0,
     hasSettings: (features & FEATURE_SETTINGS) !== 0,
+    hasMacroNames,
     layerCount,
     nameLen: Math.min(nameLen, VIA_EXTRA_NAME_FIELD_LEN),
     iconCount,
+    // bytes 9 and 10 only mean something when the keyboard advertises macro names
+    macroCount: hasMacroNames ? macroCount : 0,
+    macroNameLen: hasMacroNames
+      ? Math.min(macroNameLen, VIA_EXTRA_NAME_FIELD_LEN)
+      : 0,
   };
 };
 

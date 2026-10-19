@@ -618,6 +618,21 @@ export class KeyboardAPI {
     await this.viaExtraCommand(ViaExtraOp.SAVE);
   }
 
+  async getMacroName(macro: number): Promise<string> {
+    return decodeName(
+      await this.viaExtraCommand(ViaExtraOp.GET_MACRO_NAME, [macro]),
+    );
+  }
+
+  // An empty name clears the macro's name.
+  async setMacroName(macro: number, name: string) {
+    await this.viaExtraCommand(ViaExtraOp.SET_MACRO_NAME, [
+      macro,
+      name.length,
+      ...encodeName(name),
+    ]);
+  }
+
   async getViaExtraSetting(id: number): Promise<number> {
     const [hi, lo] = await this.viaExtraCommand(ViaExtraOp.GET_SETTING, [id]);
     return (hi << 8) | lo;

@@ -14,6 +14,7 @@ type ViaExtraState = {
   caps: ViaExtraCaps | null;
   layerNames: string[];
   layerIcons: number[];
+  macroNames: string[];
   // layer the keyboard is currently on (highest active layer), null if unknown
   activeLayer: number | null;
   // bitmask of all active layers
@@ -27,6 +28,7 @@ const viaExtraInitialState: ViaExtraState = {
   caps: null,
   layerNames: [],
   layerIcons: [],
+  macroNames: [],
   activeLayer: null,
   layerMask: 0,
   screensaverMinutes: null,
@@ -56,6 +58,15 @@ const viaExtraSlice = createSlice({
     ) => {
       state.layerNames[action.payload.layer] = action.payload.name;
     },
+    setMacroNamesSuccess: (state, action: PayloadAction<string[]>) => {
+      state.macroNames = action.payload;
+    },
+    setMacroNameSuccess: (
+      state,
+      action: PayloadAction<{macro: number; name: string}>,
+    ) => {
+      state.macroNames[action.payload.macro] = action.payload.name;
+    },
     setLayerIconSuccess: (
       state,
       action: PayloadAction<{layer: number; icon: number}>,
@@ -84,6 +95,8 @@ export const {
   loadViaExtraSuccess,
   setLayerNameSuccess,
   setLayerIconSuccess,
+  setMacroNamesSuccess,
+  setMacroNameSuccess,
   setViaExtraStateSuccess,
   setViaExtraSettingsSuccess,
 } = viaExtraSlice.actions;
@@ -120,6 +133,17 @@ export const loadViaExtra =
         }
       }
       dispatch(loadViaExtraSuccess({caps, layerNames, layerIcons}));
+      if (caps.hasMacroNames) {
+        try {
+          const macroNames: string[] = [];
+          for (let macro = 0; macro < caps.macroCount; macro++) {
+            macroNames[macro] = await api.getMacroName(macro);
+          }
+          dispatch(setMacroNamesSuccess(macroNames));
+        } catch (e) {
+          // macro names stay unknown; the rest still works
+        }
+      }
       if (caps.hasSettings) {
         try {
           dispatch(setViaExtraSettingsSuccess(await readSettings(api)));
@@ -143,6 +167,18 @@ export const renameLayer =
     await api.saveViaExtra();
     const stored = await api.getLayerName(layer);
     dispatch(setLayerNameSuccess({layer, name: stored}));
+  };
+
+// Writes a macro's name to the keyboard, saves it, then reads it back.
+// An empty name clears it. Rejects if the keyboard refuses or the connection fails.
+export const renameMacro =
+  (macro: number, name: string): AppThunk<Promise<void>> =>
+  async (dispatch, getState) => {
+    const api = getSelectedKeyboardAPI(getState()) as KeyboardAPI;
+    await api.setMacroName(macro, name);
+    await api.saveViaExtra();
+    const stored = await api.getMacroName(macro);
+    dispatch(setMacroNameSuccess({macro, name: stored}));
   };
 
 // icon 0 restores the layer's default icon. Reads back the icon the keyboard
@@ -224,6 +260,8 @@ export const pollViaExtraState =
 export const getViaExtraCaps = (state: RootState) => state.viaExtra.caps;
 export const getViaExtraLayerNames = (state: RootState) => state.viaExtra.layerNames;
 export const getViaExtraLayerIcons = (state: RootState) => state.viaExtra.layerIcons;
+export const getViaExtraMacroNames = (state: RootState) =>
+  state.viaExtra.macroNames;
 export const getScreensaverMinutes = (state: RootState) =>
   state.viaExtra.screensaverMinutes;
 export const getDialHoldMs = (state: RootState) => state.viaExtra.dialHoldMs;
