@@ -9,7 +9,7 @@ const hash = fs.readFileSync('public/definitions/hash.json', 'utf8');
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // e.g. VITE_BASE=/via_buildbox/ when hosted in a subfolder
+  // e.g. VITE_BASE=/subfolder/ when hosted in a subfolder
   base: process.env.VITE_BASE || '/',
   plugins: [
     react(),
